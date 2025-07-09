@@ -1,8 +1,20 @@
-import { createServer } from "http";
+import express from "express";
 import { Server } from "socket.io";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const httpServer = createServer();
-const io = new Server(httpServer, {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+app.use(express.static(path.join(__dirname, "public")));
+
+const expressServer = app.listen(8080, () => {
+  console.log("Server running on port 8080");
+});
+
+const io = new Server(expressServer, {
   cors: {
     origin: "*",
   },
@@ -15,8 +27,4 @@ io.on("connection", (socket) => {
     console.log(message);
     io.emit("message", `${message} from server & ${socket.id}`);
   });
-});
-
-httpServer.listen(8080, () => {
-  console.log("Server running on port 8080");
 });
