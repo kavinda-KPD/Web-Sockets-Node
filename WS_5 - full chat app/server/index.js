@@ -2,9 +2,12 @@ import express from "express";
 import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
+import { time } from "console";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const ADMIN = "admin";
 
 const app = express();
 
@@ -13,6 +16,14 @@ app.use(express.static(path.join(__dirname, "public")));
 const expressServer = app.listen(8080, () => {
   console.log("Server running on port 8080");
 });
+
+//state
+const UsersState = {
+  users: [],
+  setUsers: (newUsersArray) => {
+    this.users = newUsersArray;
+  },
+};
 
 const io = new Server(expressServer, {
   cors: {
@@ -52,3 +63,37 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("activity", name);
   });
 });
+
+function buildMsg(name, text) {
+  return {
+    name,
+    text,
+    time: new Intl.DateTimeFormat("default", { timeStyle: "short" }).format(
+      new Date()
+    ),
+  };
+}
+
+function activateUser(id, name, room) {
+  const user = { id, name, room };
+
+  UsersState.setUsers([...UsersState.users.filter((u) => u.id !== id), user]);
+
+  return user;
+}
+
+function usersLeavesApp(id) {
+  UsersState.setUsers(UsersState.users.filter((u) => u.id !== id));
+}
+
+function getUser(id) {
+  return UsersState.users.find((u) => u.id === id);
+}
+
+function getRoomUsers(room) {
+  return UsersState.users.filter((u) => u.room === room);
+}
+
+function getAllActiveRooms() {
+  return [...new Set(UsersState.users.map((u) => u.room))];
+}
