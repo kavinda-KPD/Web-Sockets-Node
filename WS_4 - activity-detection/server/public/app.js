@@ -1,14 +1,15 @@
 const socket = io("ws://localhost:8080");
 
+const activity = document.querySelector(".activity");
+const msgInput = document.querySelector("input");
 const sendMessage = (e) => {
   e.preventDefault();
-  const input = document.getElementById("message");
 
-  if (input.value) {
-    socket.emit("message", input.value);
-    input.value = "";
+  if (msgInput.value) {
+    socket.emit("message", msgInput.value);
+    msgInput.value = "";
   }
-  input.focus();
+  msgInput.focus();
 };
 
 document.querySelector("form").addEventListener("submit", sendMessage);
@@ -18,4 +19,8 @@ socket.on("message", (data) => {
   const li = document.createElement("li");
   li.textContent = data;
   document.querySelector("ul").appendChild(li);
+});
+
+msgInput.addEventListener("keypress", () => {
+  socket.emit("activity", `${socket.id} is typing...`);
 });
