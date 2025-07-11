@@ -1,5 +1,5 @@
 {
-  "name": "ws-3-socket.io-express",
+  "name": "ws-4-activity-detection",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
