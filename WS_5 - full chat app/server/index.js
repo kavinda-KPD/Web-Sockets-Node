@@ -2,7 +2,6 @@ import express from "express";
 import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
-import { time } from "console";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +20,7 @@ const expressServer = app.listen(8080, () => {
 const UsersState = {
   users: [],
   setUsers: (newUsersArray) => {
-    this.users = newUsersArray;
+    UsersState.users = newUsersArray;
   },
 };
 
@@ -86,11 +85,11 @@ io.on("connection", (socket) => {
   //when user disconnects - to all others
   socket.on("disconnect", () => {
     const user = getUser(socket.id);
-    usersLeavesApp(user.id);
+    usersLeavesApp(socket.id);
 
     if (user) {
       io.to(user.room).emit(
-        "userList",
+        "message",
         buildMsg(ADMIN, `${user.name} left the room`)
       );
 
@@ -101,13 +100,14 @@ io.on("connection", (socket) => {
       io.emit("roomList", {
         rooms: getAllActiveRooms(),
       });
-    }
 
-    socket.broadcast.emit(
-      "message",
-      buildMsg(ADMIN, `${user.name} left the room`)
-    );
-    console.log(`${socket.id} disconnected`);
+      console.log("user", user);
+      socket.broadcast.emit(
+        "message",
+        buildMsg(ADMIN, `${user.name} left the room`)
+      );
+      console.log(`${socket.id} disconnected`);
+    }
   });
 
   //Listen for messages coming from the client
