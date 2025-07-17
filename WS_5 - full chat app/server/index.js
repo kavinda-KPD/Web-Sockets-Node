@@ -35,32 +35,97 @@ io.on("connection", (socket) => {
   console.log("Client connected ===> ", socket.id);
 
   // upon connection only to user
-  socket.emit("message", `${socket.id} welcome to the server`);
+  socket.emit("message", buildMsg(ADMIN, `welcome to the server`));
 
-  //upon connection to all users
-  socket.broadcast.emit("message", `${socket.id} joined the server`);
+  socket.on("enterRoom", ({ name, room }) => {
+    //leave previous room if user already in one
+    const previousRoom = getUser(socket.id)?.room;
 
-  //Listen for messages coming from the client
-  socket.on("message", (message) => {
-    //send to all the users in the room including the sender
-    io.emit("message", `${message} from server & ${socket.id}`);
+    if (previousRoom) {
+      socket.leave(previousRoom);
+      io.to(previousRoom).emit(
+        "message",
+        buildMsg(ADMIN, `${name} left the room`)
+      );
+    }
 
-    //send to all the users in the room excluding the sender
-    socket.broadcast.emit(
+    const user = activateUser(socket.id, name, room);
+
+    //cannot update previous room list until after the state update in activate user
+    if (previousRoom) {
+      io.to(previousRoom).emit("userList", {
+        users: getRoomUsers(previousRoom),
+      });
+    }
+
+    //join new room
+    socket.join(user.room);
+
+    // to user who joined
+    socket.emit(
       "message",
-      `===> ${message} from server & ${socket.id}`
+      buildMsg(ADMIN, `welcome to ${user.room} chat room`)
     );
+
+    // to all users in the room
+    socket.broadcast
+      .to(user.room)
+      .emit("message", buildMsg(ADMIN, `${name} joined the room`));
+
+    //update user list
+    io.to(user.room).emit("userList", {
+      users: getRoomUsers(user.room),
+    });
+
+    //update room list
+    io.emit("roomList", {
+      rooms: getAllActiveRooms(),
+    });
   });
 
-  // upon disconnection
+  //when user disconnects - to all others
   socket.on("disconnect", () => {
-    //send to all the users in the room excluding the sender
-    socket.broadcast.emit("message", `${socket.id} left the server`);
+    const user = getUser(socket.id);
+    usersLeavesApp(user.id);
+
+    if (user) {
+      io.to(user.room).emit(
+        "userList",
+        buildMsg(ADMIN, `${user.name} left the room`)
+      );
+
+      io.to(user.room).emit("userList", {
+        users: getRoomUsers(user.room),
+      });
+
+      io.emit("roomList", {
+        rooms: getAllActiveRooms(),
+      });
+    }
+
+    socket.broadcast.emit(
+      "message",
+      buildMsg(ADMIN, `${user.name} left the room`)
+    );
+    console.log(`${socket.id} disconnected`);
+  });
+
+  //Listen for messages coming from the client
+  socket.on("message", ({ name, text }) => {
+    const room = getUser(socket.id)?.room;
+
+    if (room) {
+      io.to(room).emit("message", buildMsg(name, text));
+    }
   });
 
   // listen for activity coming from the client and broadcast to all
   socket.on("activity", (name) => {
-    socket.broadcast.emit("activity", name);
+    const room = getUser(socket.id)?.room;
+
+    if (room) {
+      socket.broadcast.to(room).emit("activity", name);
+    }
   });
 });
 
